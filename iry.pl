@@ -4,6 +4,7 @@ use feature qw|say|;
 use Data::Dumper;
 use Date::Format;
 use Cwd 'abs_path';
+use File::stat;
 
 
 #----------------------------------------
@@ -35,11 +36,18 @@ for(my $i = 0; $i<= $#ARGV; $i++){
 
 # check args
 $conf->{'--dest'} = abs_path($conf->{'--dest'});
-die "Directory $conf->{'--dest'} does not exist" if(!-d $conf->{'--dest'});
+die "ERROR: Directory $conf->{'--dest'} does not exist" if(!-d $conf->{'--dest'});
 
 $conf->{'--password-file'} = abs_path($conf->{'--password-file'});
+if($conf->{'--password-file'}){
+    die "ERROR: Password file must have 0600 permissions" unless( 
+	sprintf("%04o", stat($conf->{'--password-file'})->mode & 07777) eq "0600" 
+    );
+}
 
-die "No sources defined" if($#sources == -1);
+
+
+die "ERROR: No sources defined" if($#sources == -1);
 
 chdir $conf->{'--dest'};
 
@@ -126,7 +134,7 @@ sub echo {
 
 sub help{
 say q|
-iry.pl - Iterated Rsync Over SSH
+iry.pl - Iterated Rsync
 This script is used to make incremetal backups, saving old iteration results.
 Usage:
 iry.pl OPTIONS SRC [SRC]
@@ -135,7 +143,7 @@ Otions are:
 
     --dest DIR                Destination directory. Required.
 
-    --password-file FILE      File containing password for remote rsync daemon.
+    --password-file FILE      File containing password for remote rsync daemon. This file must have 0600 permissions.
 
     --history-depth NUM       Keep these number of results of previous script runs. Defaults to 14.
 
@@ -172,7 +180,7 @@ This example asumes you have ssh configured to use key-based auth:
      # backup the files
      iry.pl --dest /home/backups --log-to-term 0 --log-to-file 1 rsync://backup_user@localhost:3333/module/*
      # close created connection
-     ssh -S ~/.ssh/backup_connection -O exit
+     ssh -S ~/.ssh/backup_connection -O exit user@example.com
 |;
 exit;
 }
